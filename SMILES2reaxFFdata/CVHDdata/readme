@@ -1,1 +1,188 @@
+# SMILES to LAMMPS Data Converter
 
+A Python tool for converting SMILES molecular representations to LAMMPS molecular dynamics input files with chemical role recognition for CVHD (Chemical Valence History Dependent) enhanced sampling.
+
+## Overview
+
+This project provides an automated pipeline to generate LAMMPS data files from SMILES strings, including:
+- Molecular template generation with 3D conformation
+- Chemical role identification using SMARTS patterns
+- Molecular system packing with Packmol
+- Generation of atoms index files (`atoms.ndx`) and LAMMPS group files for CVHD sampling
+
+## Features
+
+- **SMILES Parsing**: Convert SMILES strings to 3D molecular structures using RDKit
+- **Chemical Role Recognition**: Identify atomic roles (carbonyl carbons, amine nitrogens, etc.) using SMARTS patterns
+- **Molecular Packing**: Pack multiple molecules into a simulation box using Packmol
+- **LAMMPS Data Generation**: Create complete LAMMPS data files with atom types, charges, and coordinates
+- **CVHD Support**: Generate index files with all required groups for CVHD enhanced sampling
+- **Density Control**: Calculate box dimensions based on target system density
+
+## Project Structure
+
+```
+type_seek/
+├── chemistry_roles.py      # Chemical role identification using SMARTS
+├── config.py              # Configuration (SMARTS patterns, atom type mappings)
+├── group_export.py        # Export atoms.ndx and LAMMPS group files
+├── main.py                # Example usage and demonstration
+├── models.py              # Data models (TemplateInfo, PackedSystem, etc.)
+├── packmol_parser.py      # Parse Packmol output PDB files
+├── pdb_utils.py           # PDB file generation and manipulation
+├── smiles_to_lammps.py    # Main conversion class
+├── smi2reaxdata.py        # Original implementation (legacy)
+└── atoms.ndx.example      # Example index file
+```
+
+## Installation
+
+### 1. Conda Environment Setup
+
+```bash
+# Create and activate the conda environment
+conda create -n CVHDdata python=3.8
+conda activate CVHDdata
+```
+
+### 2. Install Dependencies
+
+```bash
+# Install RDKit
+conda install -c conda-forge rdkit=2024.03.2
+
+# Install other Python dependencies
+pip install numpy
+
+# Install Packmol (system-wide or local)
+# Download from: https://github.com/leandromartinez98/packmol
+# Or use your system package manager
+```
+
+## Usage
+
+### Basic Example
+
+```python
+from smiles_to_lammps import SmilesToLammps
+
+# Define your molecular system
+smiles_list = [
+    "O=C(CCCCCC)OCC(COC(CCCC)=O)(COC(CCCCCC)=O)COC(CCCC)=O",  # Ester
+    "CC(C)(C)CC(C)(C)C1=CC=C(NC2=CC=C(C(C)(C)CC(C)(C)C)C=C2)C=C1",  # Diphenylamine
+    "O=O"  # Oxygen
+]
+counts = [20, 20, 100]
+template_names = ["EST", "DPA", "OXY"]
+target_density = 50.0  # kg/m³
+
+# Create converter and generate LAMMPS input
+builder = SmilesToLammps(workspace_name="my_system", use_pdb_mode=True)
+success = builder.build_lammps_input(
+    smiles_list=smiles_list,
+    counts=counts,
+    target_density_kg_per_m3=target_density,
+    output_file="system.data",
+    template_names=template_names
+)
+```
+
+### Command Line Usage
+
+```bash
+# Activate environment
+source activate CVHDdata
+
+# Run the example
+python main.py
+```
+
+### Custom Configuration
+
+You can modify `config.py` to:
+- Add new SMARTS patterns for role recognition
+- Change atom type mappings
+- Adjust Packmol parameters
+- Modify residue names
+
+## Output Files
+
+The tool generates the following files in the `tmp/{workspace_name}/` directory:
+
+1. **Template PDBs**: Individual molecule templates (`template_*.pdb`)
+2. **Packmol Input**: Packing instructions (`packmol.inp`)
+3. **Packed System**: Combined molecular system (`packed.pdb`)
+4. **LAMMPS Data**: Complete simulation input (`system.data`)
+5. **Index Files**:
+   - `atoms.ndx`: PLUMED atoms index file with chemical role groups
+   - `groups.lmp`: LAMMPS group definitions
+
+### CVHD Required Groups
+
+The generated `atoms.ndx` includes all groups required for CVHD enhanced sampling:
+
+**Chemical Role Groups:**
+- `c_carbonyl` - Carbonyl carbon atoms
+- `o_carbonyl` - Carbonyl oxygen atoms  
+- `o_ester_single` - Ester single-bond oxygen
+- `c_alpha_to_carbonyl` - α-carbonyl carbon
+- `h_alpha` - α-hydrogen
+- `c_ar` - Aromatic carbon
+- `n_amine` - Amine nitrogen
+- `h_nh` - N-H hydrogen
+- `o2_oxygen` - Oxygen molecule oxygen
+
+**Element Groups:**
+- `h_all` - All hydrogen atoms
+- `c_all` - All carbon atoms
+- `o_all` - All oxygen atoms
+- `n_all` - All nitrogen atoms
+- `heavy_all` - All heavy atoms (non-hydrogen)
+
+## Configuration
+
+### SMARTS Patterns
+
+Default SMARTS patterns are defined in `config.py`:
+
+```python
+DEFAULT_ROLE_SMARTS = {
+    "c_carbonyl": "[CX3]=[OX1]",
+    "o_carbonyl": "[OX1]=[CX3]",
+    "o_ester_single": "[OX2H0][CX3](=O)",
+    "c_ar": "[c;!$(c=O)]",
+    "n_amine": "[NX3;H2,H1,H0;!$(N=O)]",
+    "o2_oxygen": "O=O",
+    # ... more patterns
+}
+```
+
+### Atom Type Mapping
+
+```python
+DEFAULT_ROLE_TO_ATOM_TYPE = {
+    "c_carbonyl": 1,
+    "c_ar": 1,
+    "o_carbonyl": 3,
+    "o_ester_single": 3,
+    "n_amine": 4,
+    # ... more mappings
+}
+```
+
+## Dependencies
+
+- **Python**: 3.8+
+- **RDKit**: 2024.03.2+ (for chemical informatics)
+- **Packmol**: 21.1.0+ (for molecular packing)
+- **NumPy**: 1.24.4+ (for numerical operations)
+
+## License
+
+This project is developed for academic and research use. Please consult the original authors for licensing information.
+
+## Acknowledgments
+
+- The RDKit development team for the excellent cheminformatics toolkit
+- The Packmol developers for the molecular packing software
+- Contributors to the CVHD methodology for enhanced sampling
