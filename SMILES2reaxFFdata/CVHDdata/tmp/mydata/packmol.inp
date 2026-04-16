@@ -1,0 +1,17 @@
+tolerance 6.0
+filetype pdb
+output packed.pdb
+
+structure template_EST.pdb
+  number 20
+  inside box 0.0 0.0 0.0 89.58371756787993 89.58371756787993 89.58371756787993
+end structure
+structure template_DPA.pdb
+  number 20
+  inside box 0.0 0.0 0.0 89.58371756787993 89.58371756787993 89.58371756787993
+end structure
+structure template_OXY.pdb
+  number 100
+  inside box 0.0 0.0 0.0 89.58371756787993 89.58371756787993 89.58371756787993
+end structure
+
